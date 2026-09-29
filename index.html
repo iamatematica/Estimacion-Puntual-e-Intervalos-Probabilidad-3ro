@@ -65,7 +65,8 @@ pre{font-family:var(--f-mono);font-size:.82rem;background:var(--suave);border:1p
 
 /* ---------- barra de etapas ---------- */
 .etapas-bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:rgba(243,245,248,.96);backdrop-filter:blur(6px);border-bottom:1px solid var(--borde)}
-.etapas-inner{max-width:1080px;margin:0 auto;padding:8px 16px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.etapas-inner{max-width:1180px;margin:0 auto;padding:8px 16px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.tab.act .tab-n{background:var(--tinta)}.tab.act.full .tab-n{background:var(--verde)}
 .tab{font:inherit;text-align:left;border:1px solid var(--borde);background:var(--card);border-radius:10px;padding:6px 8px 7px;cursor:pointer;color:var(--tinta);display:grid;grid-template-columns:auto minmax(0,1fr);gap:1px 7px;align-items:center;transition:border-color .2s,box-shadow .2s}
 .tab:hover{border-color:var(--azul)}
 .tab.on{border-color:var(--azul);box-shadow:0 0 0 2px var(--azul-bg)}
@@ -75,7 +76,7 @@ pre{font-family:var(--f-mono);font-size:.82rem;background:var(--suave);border:1p
 .tab-m{font-family:var(--f-mono);font-size:.64rem;color:var(--tinta2);display:flex;align-items:center;gap:6px}
 .tab-bar{flex:1;height:4px;background:#e3e8ef;border-radius:2px;overflow:hidden;min-width:20px}
 .tab-bar i{display:block;height:100%;width:0;background:var(--verde);transition:width .4s}
-@media (max-width:900px){.etapas-inner{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:1000px){.etapas-inner{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media (max-width:600px){.etapas-inner{display:flex;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin}.tab{flex:0 0 150px}}
 
 /* ---------- etapa ---------- */
@@ -704,10 +705,11 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#glosa
 
 /* ===== armado de la clase: etapas, preguntas, progreso ===== */
 const ETAPAS = [];
-function etapa(o) { ETAPAS.push(o); }
+function etapa(o) { ETAPAS.push(o); ETAPAS.sort((a, b) => (a.orden ?? a.n) - (b.orden ?? b.n)); }
+const NETAPAS = () => ETAPAS.filter(e => !e.act).length;
 
 function barraEtapas() {
-  $('#etapas').innerHTML = ETAPAS.map(e => `<button class="tab" data-etapa="${e.n}" aria-label="Etapa ${e.n}: ${e.titulo}"><span class="tab-n">${e.n}</span><span class="tab-t">${e.corto}</span><span class="tab-m"><span class="tab-bar"><i></i></span></span></button>`).join('');
+  $('#etapas').innerHTML = ETAPAS.map(e => `<button class="tab${e.act ? ' act' : ''}" data-etapa="${e.n}" aria-label="${e.act ? 'Actividad' : 'Etapa ' + e.n}: ${e.titulo}"><span class="tab-n">${e.badge || e.n}</span><span class="tab-t">${e.corto}</span><span class="tab-m"><span class="tab-bar"><i></i></span></span></button>`).join('');
 }
 function progreso() {
   for (const e of ETAPAS) {
@@ -719,18 +721,18 @@ function progreso() {
   }
 }
 function mostrar(n, scroll = true) {
-  n = Math.max(1, Math.min(ETAPAS.length, +n)); S.etapa = n; guardar();
+  const e = ETAPAS.find(x => x.n === +n) || ETAPAS[0]; n = e.n; S.etapa = n; guardar();
+  const idx = ETAPAS.indexOf(e);
   $$('.tab').forEach(b => b.classList.toggle('on', +b.dataset.etapa === n));
   $$('.tab').forEach(b => b.setAttribute('aria-current', +b.dataset.etapa === n ? 'step' : 'false'));
   $$('section.etapa').forEach(s => s.hidden = +s.dataset.n !== n);
   const tb = $(`.tab[data-etapa="${n}"]`), bar = $('#etapas'); if (tb && bar.scrollWidth > bar.clientWidth) bar.scrollLeft = tb.offsetLeft - 16;
   let sec = $(`section.etapa[data-n="${n}"]`);
-  const e = ETAPAS[n - 1];
   if (!sec) {
     sec = document.createElement('section'); sec.className = 'etapa'; sec.dataset.n = n;
-    const sig = ETAPAS[n], ant = ETAPAS[n - 2];
-    sec.innerHTML = `<div class="e-head"><div class="e-kicker">Etapa ${n} de ${ETAPAS.length}</div><h2>${T(e.titulo)}</h2><p class="e-lead">${T(e.lead)}</p>${letrasEtapa(n)}</div>${T(e.html())}
-      <nav class="e-nav">${ant ? `<button class="btn ghost" data-etapa="${n - 1}">← ${ant.corto}</button>` : '<span></span>'}${sig ? `<button class="btn" data-etapa="${n + 1}">Seguir: ${sig.corto} →</button>` : ''}</nav>`;
+    const sig = ETAPAS[idx + 1], ant = ETAPAS[idx - 1];
+    sec.innerHTML = `<div class="e-head"><div class="e-kicker">${e.kicker || `Etapa ${n} de ${NETAPAS()}`}</div><h2>${T(e.titulo)}</h2><p class="e-lead">${T(e.lead)}</p>${letrasEtapa(n)}</div>${T(e.html())}
+      <nav class="e-nav">${ant ? `<button class="btn ghost" data-etapa="${ant.n}">← ${ant.corto}</button>` : '<span></span>'}${sig ? `<button class="btn" data-etapa="${sig.n}">Seguir: ${sig.corto} →</button>` : ''}</nav>`;
     $('main').appendChild(sec);
     restaurar(sec);
     e.init(sec);
@@ -1898,6 +1900,113 @@ ${MX.fx('L_i = @r{@f{(n − 1) @m{s}^2}{χ^2_{1 − @f{α}{2}}}}')}${MX.fx('L_s 
   }
 });
 
+/* ===== Actividad integradora (entre la etapa 3 y la 4) ===== */
+etapa({
+  n: 7, orden: 3.5, act: true, badge: 'A', corto: 'Actividad',
+  kicker: 'Actividad · antes de seguir con la etapa 4',
+  titulo: 'Actividad: el IMC de los clientes',
+  lead: 'Antes de seguir, vas a usar todo lo de las tres primeras etapas con una variable nueva: el índice de masa corporal (IMC) de los 1338 clientes de la aseguradora. Resolvé las tres partes y al final comprobá tus respuestas con los datos reales.',
+  html() {
+    const F = [[15, 41], [20, 204], [25, 386], [30, 391], [35, 225], [40, 71], [45, 17], [50, 3]];
+    return `
+<div class="bloque"><h3><span class="badge">Parte 1</span> Población y muestra</h3>
+<p class="lectura">La aseguradora tiene 1338 clientes. El IMC promedio de <b>todos</b> es 30,66, con un desvío de 6,10. Un analista elige 50 clientes al azar y obtiene un IMC promedio de 30,93, con un desvío de 5,56.</p>
+${Q({ id: 'a1', etapa: 7, num: '1', enun: '¿Qué letra le corresponde al número 30,66?',
+  ops: ['⟦μ⟧, media poblacional', '⟦@b{x}⟧, media muestral', '⟦σ⟧, desvío poblacional', '⟦s⟧, desvío muestral'], ok: 0,
+  fb: ['Correcto: es el promedio de los 1338 clientes, es decir, de toda la población.', 'El 30,66 sale de <b>todos</b> los clientes, no de los 50 de la muestra.', 'Es un promedio, no un desvío.', 'Es un promedio y sale de la población.'] })}
+${Q({ id: 'a2', etapa: 7, num: '2', enun: '¿Y al número 5,56?',
+  ops: ['⟦σ⟧, desvío poblacional', '⟦s⟧, desvío muestral', '⟦@b{x}⟧, media muestral', '⟦n⟧, tamaño de la muestra'], ok: 1,
+  fb: ['El 5,56 se calculó con los 50 clientes de la muestra; el desvío de la población es 6,10.', 'Correcto: es el desvío de la muestra de 50. Estima a ⟦σ = 6,10⟧.', 'Es un desvío, no un promedio.', 'El tamaño de la muestra es 50.'] })}
+${Q({ id: 'a3', etapa: 7, num: '3', enun: 'El analista informa: «El IMC promedio de los clientes es 30,93». ¿Qué le corregirías?',
+  ops: ['Nada: con 50 clientes el promedio ya es el verdadero.', 'Que 30,93 es una estimación de ⟦μ⟧ hecha con una muestra: con otros 50 clientes daría otro número. Debería decir «alrededor de 30,93».', 'Que tendría que haber dividido por ⟦n − 1⟧ para calcular el promedio.', 'Que 30,93 es un parámetro y no se puede informar.'], ok: 1,
+  fb: ['Viste en la etapa 1 que la media de una muestra cambia de muestra en muestra: rara vez coincide con ⟦μ⟧.', 'Correcto. Acá sabemos que ⟦μ = 30,66⟧, pero en la vida real no lo sabríamos: por eso hace falta decir cuánto se puede equivocar la estimación.', 'El promedio se calcula dividiendo por ⟦n⟧; el ⟦n − 1⟧ es para el desvío.', 'Es un estadístico, no un parámetro, y sí se puede informar como estimación.'] })}
+</div>
+
+<div class="bloque"><h3><span class="badge">Parte 2</span> Del histograma a las áreas</h3>
+<p class="lectura">Esta es la tabla de frecuencias del IMC de los 1338 clientes, en clases de ancho ⟦h = 5⟧.</p>
+<div class="scrollx"><table class="tbl" style="max-width:520px"><thead><tr><th>Clase de IMC</th><th class="num">⟦f_k⟧ (clientes)</th></tr></thead><tbody>
+${F.map(([a, f]) => `<tr><td>[${a} ; ${a + 5})</td><td class="num">${f}</td></tr>`).join('')}
+<tr><td><b>Total</b></td><td class="num"><b>1338</b></td></tr></tbody></table></div>
+${Q({ id: 'a4', etapa: 7, tipo: 'num', num: '4', enun: '¿Cuál es la frecuencia relativa ⟦fr_k⟧ de la clase [30 ; 35)? (con cuatro decimales)', r: 391 / 1338, tol: .0006, dec: 4,
+  fbOk: '⟦fr_k = @f{f_k}{N} = @f{391}{1338} = 0,2922⟧: el 29,2 % de los clientes.', fbNo: v => Math.abs(v - 391) < 1 ? 'Esa es la frecuencia absoluta. Falta dividir por el total.' : 'Todavía no.', pistas: ['⟦fr_k = @f{f_k}{N}⟧'] })}
+${Q({ id: 'a5', etapa: 7, tipo: 'num', num: '5', enun: '¿Cuál es la densidad ⟦d_k⟧ de esa misma clase, es decir, la altura de su barra en un histograma de densidad? (con cuatro decimales)', r: 391 / 1338 / 5, tol: .0003, dec: 4,
+  fbOk: '⟦d_k = @f{fr_k}{h} = @f{0,2922}{5} = 0,0584⟧. Y el área de la barra, ⟦0,0584 · 5⟧, vuelve a dar 0,2922.',
+  fbNo: v => Math.abs(v - 391 / 1338 * 5) < .01 ? 'Multiplicaste por el ancho; la densidad es la frecuencia relativa <b>dividida</b> por el ancho.' : Math.abs(v - 391 / 1338) < .001 ? 'Esa es la frecuencia relativa. Falta dividir por el ancho de clase.' : 'Todavía no.', pistas: ['⟦d_k = @f{fr_k}{h}⟧, con ⟦h = 5⟧.'] })}
+${Q({ id: 'a6', etapa: 7, tipo: 'num', num: '6', enun: '¿Qué proporción de clientes tiene un IMC entre 25 y 35? (con cuatro decimales)', r: 777 / 1338, tol: .0006, dec: 4,
+  fbOk: 'Se suman las dos clases: ⟦@f{386 + 391}{1338} = @f{777}{1338} = 0,5807⟧. En el histograma de densidad, es la suma de las áreas de esas dos barras.', fbNo: () => 'Todavía no. ¿Qué clases cubren de 25 a 35?', pistas: ['Son dos clases: [25 ; 30) y [30 ; 35).', 'Sumá sus frecuencias absolutas y dividí por 1338.'] })}
+</div>
+
+<div class="bloque"><h3><span class="badge">Parte 3</span> La normal y el puntaje ⟦z⟧</h3>
+<p class="lectura">Usamos como modelo una normal con la media y el desvío de la población: ⟦X ∼ N(30,66 ; 6,10)⟧.</p>
+${Q({ id: 'a7', etapa: 7, tipo: 'num', num: '7', enun: '¿Cuál es el puntaje ⟦z⟧ de un cliente con IMC 40? (con dos decimales)', r: (40 - 30.66) / 6.10, tol: .011, dec: 2,
+  fbOk: '⟦z = @f{40 − 30,66}{6,10} = @f{9,34}{6,10} = 1,53⟧: está un desvío y medio por encima del promedio.', fbNo: v => Math.abs(v - 9.34) < .02 ? 'Esa es la distancia en unidades de IMC. Falta expresarla en desvíos.' : 'Todavía no.', pistas: ['⟦z = @f{x − μ}{σ}⟧'] })}
+${Q({ id: 'a8', etapa: 7, num: '8', enun: '¿Qué cliente tiene un IMC más raro para esta población: uno con IMC 18 o uno con IMC 42?',
+  ops: ['El de IMC 42, porque está más lejos en números.', 'El de IMC 18: ⟦z = −2,08⟧, contra ⟦z = 1,86⟧ del de 42.', 'Están igual de lejos.', 'No se puede comparar un valor bajo con uno alto.'], ok: 1,
+  fb: ['42 está a 11,34 del promedio y 18 a 12,66: el de 18 está más lejos.', 'Correcto: medido en desvíos, 18 está más lejos del centro. El signo sólo dice de qué lado.', 'Calculá los dos puntajes ⟦z⟧.', 'Sí se puede: el puntaje ⟦z⟧ sirve justamente para eso.'], pistas: ['Calculá ⟦z⟧ para 18 y para 42 y compará sus valores absolutos.'] })}
+${Q({ id: 'a9', etapa: 7, num: '9', enun: 'Según la regla 68 – 95 – 99,7, ¿entre qué valores de IMC debería estar cerca del 95 % de los clientes?',
+  ops: ['Entre 24,56 y 36,76', 'Entre 18,46 y 42,86', 'Entre 12,36 y 48,96', 'Entre 25 y 35'], ok: 1,
+  fb: ['Ese es ⟦μ ± σ⟧: ahí queda cerca del 68 %.', 'Correcto: ⟦μ ± 2σ = 30,66 ± 12,20⟧.', 'Ese es ⟦μ ± 3σ⟧: ahí queda cerca del 99,7 %.', 'Ese intervalo no sale de la regla; en la parte 2 viste que ahí hay un 58 %.'], pistas: ['El 95 % corresponde a dos desvíos a cada lado.'] })}
+${Q({ id: 'a10', etapa: 7, num: '10', enun: 'Alguien calcula que la curva normal vale ⟦f(30) = 0,065⟧ y concluye: «el 6,5 % de los clientes tiene IMC 30». ¿Qué le decís?',
+  ops: ['Tiene razón.', 'Se equivoca: la altura de la curva es una densidad, no una probabilidad. La probabilidad de un valor exacto es 0; tiene sentido preguntar por un intervalo, por ejemplo de 29,5 a 30,5.', 'Se equivoca: tendría que multiplicar por 1338.', 'Tiene razón sólo si el IMC es normal.'], ok: 1,
+  fb: ['Es el mismo error que viste en la etapa 2 con las horas sentado.', 'Correcto. Para un intervalo angosto, el área es aproximadamente altura por ancho: ⟦0,065 · 1 ≈ 0,065⟧ entre 29,5 y 30,5.', 'Eso daría una «cantidad de clientes con IMC exactamente 30», que tampoco tiene sentido en una variable continua.', 'Aunque la variable fuera exactamente normal, la altura seguiría siendo una densidad.'] })}
+</div>
+
+<div class="bloque" data-lab="A"><h3><span class="badge lab">Comprobá</span> Tus respuestas contra los datos</h3>
+<p class="lectura">Cuando termines las tres partes, abrí el gráfico: el histograma de densidad del IMC de los 1338 clientes con la curva ⟦N(30,66 ; 6,10)⟧ encima.</p>
+<button class="btn" id="act-ver">Ver los datos reales</button>
+<div id="act-lab" hidden>
+<div class="controls">
+  <div class="ctrl"><span class="ctrl-l">Banda</span>${seg('bandA', [[0, 'ninguna'], [1, 'μ ± σ'], [2, 'μ ± 2σ'], [3, 'μ ± 3σ']], 2)}</div>
+  ${rango('act-x', 15, 50, .1, 40, 'Un cliente con IMC')}
+</div>
+<div class="lab-grid"><div><div class="svg-host" id="act-fig"></div></div><div><div class="fichas" id="act-fichas"></div></div></div>
+<div class="msg" id="act-msg"></div>
+</div>
+</div>
+
+<div class="bloque"><h3><span class="badge">Antes de seguir</span> Lo que ya sabés hacer</h3>
+<ul class="proba">
+<li>Distinguir un parámetro (⟦μ⟧, ⟦σ⟧, ⟦p⟧) de un estadístico (⟦@b{x}⟧, ⟦s⟧, ⟦@h{p}⟧), y leer una estimación como lo que es.</li>
+<li>Pasar de una tabla de frecuencias a frecuencias relativas, densidades y áreas.</li>
+<li>Usar el modelo normal: puntaje ⟦z⟧, la regla 68 – 95 – 99,7 y la diferencia entre altura y área.</li>
+</ul>
+<p class="lectura">En la etapa 4 vas a calcular esas áreas con precisión (sin la regla aproximada) con \`pnorm\` y \`qnorm\`.</p>
+</div>`;
+  },
+  init(root) {
+    const V = POB.imc, mu = 30.66, sd = 6.10;
+    const st = { band: 2 };
+    const ix = $('#act-x', root);
+    function dibujar() {
+      if ($('#act-lab', root).hidden) return;
+      const x = +ix.value, k = st.band;
+      $('#act-x-v', root).textContent = fmt(x, 1);
+      const f = new Fig($('#act-fig', root), { h: 290, x: [10, 55], y: [0, .075], m: { l: 54 }, aria: 'Histograma de densidad del IMC con la curva normal' });
+      f.ejes({ xlab: 'IMC', ylab: 'Densidad', ny: 3 });
+      const w = 2.5, c = binear(V.x, 10, w, 18);
+      if (k) f.add(`<rect x="${f.sx(mu - k * sd)}" y="${f.m.t}" width="${f.sx(mu + k * sd) - f.sx(mu - k * sd)}" height="${f.H - f.m.b - f.m.t}" fill="#1d6fa5" fill-opacity=".08"/>`);
+      c.forEach((n, i) => { if (!n) return; const y = n / V.N / w; f.add(`<rect x="${f.sx(10 + i * w) + .5}" y="${f.sy(y)}" width="${f.sx(w) - f.sx(0) - 1}" height="${f.sy(0) - f.sy(y)}" fill="#cdc6f0"/>`); });
+      f.curva(t => M.dnorm((t - mu) / sd) / sd, { color: '#1d6fa5', w: 2.4 });
+      f.vline(mu, '#1d6fa5', 'μ', { dash: '4 4', w: 1.3 });
+      if (k) { f.vline(mu - k * sd, '#1d6fa5', '', { w: 1 }); f.vline(mu + k * sd, '#1d6fa5', '', { w: 1 }); }
+      f.vline(x, '#a85a15', '', { w: 2.2 });
+      f.render();
+      const z = (x - mu) / sd, bajo = V.x.filter(v => v <= x).length / V.N;
+      let h = ficha('Puntaje ⟦z⟧ del cliente', fmt(z, 2)) + ficha('Clientes con IMC menor o igual', pct(bajo), 'mue') + ficha('Área a la izquierda en la normal', pct(M.pnorm(z)), 'pob');
+      if (k) {
+        const real = V.x.filter(v => Math.abs(v - mu) <= k * sd).length / V.N;
+        h += ficha(`Clientes reales dentro de μ ± ${k === 1 ? '' : k}σ`, pct(real), 'mue') + ficha('Lo que dice la regla', ['', '68,3 %', '95,4 %', '99,7 %'][k], 'pob');
+      }
+      $('#act-fichas', root).innerHTML = T(h);
+      $('#act-msg', root).innerHTML = T(k ? `Entre ${fmt(mu - k * sd, 2)} y ${fmt(mu + k * sd, 2)} hay un ${pct(V.x.filter(v => Math.abs(v - mu) <= k * sd).length / V.N)} de los clientes reales. La curva sigue bastante bien al histograma, con una cola derecha un poco más larga: hay algunos IMC muy altos.` : 'Elegí una banda para compararla con la regla 68 – 95 – 99,7.');
+    }
+    $('#act-ver', root).addEventListener('click', () => { $('#act-lab', root).hidden = false; $('#act-ver', root).hidden = true; dibujar(); });
+    onSeg(root, 'bandA', v => { st.band = +v; dibujar(); });
+    ix.addEventListener('input', dibujar);
+    alDibujar(7, dibujar);
+  }
+});
+
 /* ===== autotest (agregar ?test o #test a la dirección) — valores de control verificados con R/SciPy ===== */
 function autotest() {
   const H = POB.horas, cerca = (a, b, t) => Math.abs(a - b) <= t;
@@ -1927,10 +2036,13 @@ function autotest() {
     ['personas de 7 a 8 h', H.x.filter(v => v >= 7 && v < 8).length, 247, 0], ['personas de 7,5 a 8 h', H.x.filter(v => v >= 7.5 && v < 8).length, 116, 0],
     ['f(7,5) normal', M.dnorm((7.5 - H.mu) / H.sigma) / H.sigma, 0.188742, 1e-5], ['altura del pico', 1 / (H.sigma * Math.sqrt(2 * Math.PI)), 0.194160, 1e-5],
     ['área normal de 7 a 8', M.pnorm((8 - H.mu) / H.sigma) - M.pnorm((7 - H.mu) / H.sigma), 0.186999, 1e-5], ['F(10)', M.pnorm((10 - H.mu) / H.sigma), 0.836159, 1e-5],
+    ['IMC μ', POB.imc.mu, 30.663397, 1e-5], ['IMC σ', POB.imc.sigma, 6.095908, 1e-5],
+    ['IMC clase 30-35', POB.imc.x.filter(v => v >= 30 && v < 35).length, 391, 0], ['IMC clase 25-30', POB.imc.x.filter(v => v >= 25 && v < 30).length, 386, 0],
+    ['IMC real dentro de μ ± 2σ (30,66 ; 6,10)', POB.imc.x.filter(v => Math.abs(v - 30.66) <= 12.2).length / 1338, 0.957399, 2e-3],
     ['qchisq(0.025, 9)', M.qchisq(.025, 9), 2.700389, 1e-5], ['qchisq(0.975, 9)', M.qchisq(.975, 9), 19.022768, 1e-5],
   ];
   // las respuestas numéricas de las preguntas coinciden con el motor
-  const R = { e4q1: M.pnorm(1), e4q2: 1 - M.pnorm(1.5), e4q3: M.qnorm(.975), e5q5: Math.sqrt(.68 * .32 / 500), e5q6: 8.226258 - M.qnorm(.95) * 1.972575 / 10, e6q1: M.qchisq(.9, 5), e6q2: M.qchisq(.999, 20), e6q3: 1 - M.pchisq(18.49, 30), e3q1: 1.5, e3q2: 4, e2q1: .08, e5q1: .2, e5q2: 400, e5q9: .68 - M.qnorm(.975) * Math.sqrt(.68 * .32 / 500), e5q10: .68 + M.qnorm(.975) * Math.sqrt(.68 * .32 / 500), e6q6: 86.4 / M.qchisq(.975, 15), e6q7: Math.sqrt(86.4 / M.qchisq(.025, 15)) };
+  const R = { e4q1: M.pnorm(1), e4q2: 1 - M.pnorm(1.5), e4q3: M.qnorm(.975), e5q5: Math.sqrt(.68 * .32 / 500), e5q6: 8.226258 - M.qnorm(.95) * 1.972575 / 10, e6q1: M.qchisq(.9, 5), e6q2: M.qchisq(.999, 20), e6q3: 1 - M.pchisq(18.49, 30), e3q1: 1.5, e3q2: 4, e2q1: .08, e5q1: .2, e5q2: 400, e5q9: .68 - M.qnorm(.975) * Math.sqrt(.68 * .32 / 500), e5q10: .68 + M.qnorm(.975) * Math.sqrt(.68 * .32 / 500), e6q6: 86.4 / M.qchisq(.975, 15), e6q7: Math.sqrt(86.4 / M.qchisq(.025, 15)), a4: 0.292227, a5: 0.058445, a6: 0.580717, a7: 1.531148 };
   for (const k in R) { const o = QDEF[k]; C.push(['respuesta ' + k, o ? o.r : NaN, R[k], o ? o.tol / 2 : 0]); }
   window.__TESTS__ = C.map(([n, v, e, t]) => ({ n, v, e, ok: cerca(v, e, t) }));
   const ok = window.__TESTS__.filter(x => x.ok).length;
